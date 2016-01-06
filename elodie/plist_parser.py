@@ -2,6 +2,7 @@
 Author: Jaisen Mathai <jaisen@jmathai.com>
 Parse OS X plists.
 Wraps standard lib plistlib (https://docs.python.org/3/library/plistlib.html)
+Plist class to parse and interact with a plist file.
 """
 
 # load modules
@@ -9,12 +10,10 @@ from os import path
 
 import plistlib
 
-"""
-Plist class to parse and interact with a plist file.
-"""
+
 class Plist(object):
     def __init__(self, source):
-        if(path.isfile(source) == False):
+        if not path.isfile(source):
             raise IOError('Could not load plist file %s' % source)
 
         self.source = source

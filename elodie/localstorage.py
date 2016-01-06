@@ -1,12 +1,16 @@
 import hashlib
 import json
-import os
 from math import radians, cos, sqrt
+import os
+import sys
+
 from elodie import constants
+
 
 class Db(object):
     def __init__(self):
-        # verify that the application directory (~/.elodie) exists, else create it
+        # verify that the application directory (~/.elodie) exists,
+        #   else create it
         if not os.path.exists(constants.application_directory):
             os.makedirs(constants.application_directory)
 
@@ -18,7 +22,8 @@ class Db(object):
 
         self.hash_db = {}
 
-        # We know from above that this file exists so we open it for reading only.
+        # We know from above that this file exists so we open it
+        #   for reading only.
         with open(constants.hash_db, 'r') as f:
             try:
                 self.hash_db = json.load(f)
@@ -33,7 +38,8 @@ class Db(object):
 
         self.location_db = []
 
-        # We know from above that this file exists so we open it for reading only.
+        # We know from above that this file exists so we open it
+        #   for reading only.
         with open(constants.location_db, 'r') as f:
             try:
                 self.location_db = json.load(f)
@@ -42,14 +48,14 @@ class Db(object):
 
     def add_hash(self, key, value, write=False):
         self.hash_db[key] = value
-        if(write == True):
+        if(write is True):
             self.update_hash_db()
 
     def check_hash(self, key):
         return key in self.hash_db
 
     def get_hash(self, key):
-        if(self.check_hash(key) == True):
+        if(self.check_hash(key) is True):
             return self.hash_db[key]
         return None
 
@@ -86,27 +92,39 @@ class Db(object):
         data['long'] = longitude
         data['name'] = place
         self.location_db.append(data)
-        if(write == True):
+        if(write is True):
             self.update_location_db()
 
-    def get_location_name(self, latitude, longitude,threshold_m):
+    def get_location_name(self, latitude, longitude, threshold_m):
+        last_d = sys.maxint
+        name = None
         for data in self.location_db:
             # As threshold is quite smal use simple math
-            # From http://stackoverflow.com/questions/15736995/how-can-i-quickly-estimate-the-distance-between-two-latitude-longitude-points
+            # From http://stackoverflow.com/questions/15736995/how-can-i-quickly-estimate-the-distance-between-two-latitude-longitude-points  # noqa
             # convert decimal degrees to radians
 
-            lon1, lat1, lon2, lat2 = map(radians, [longitude, latitude, data['long'], data['lat']])
+            lon1, lat1, lon2, lat2 = map(
+                radians,
+                [longitude, latitude, data['long'], data['lat']]
+            )
 
-            R = 6371000  # radius of the earth in m
-            x = (lon2 - lon1) * cos( 0.5*(lat2+lat1) )
+            r = 6371000  # radius of the earth in m
+            x = (lon2 - lon1) * cos(0.5 * (lat2 + lat1))
             y = lat2 - lat1
-            d = R * sqrt( x*x + y*y )
+            d = r * sqrt(x * x + y * y)
             # Use if closer then threshold_km reuse lookup
-            if(d<=threshold_m):
-                #print "Found in cached location dist: %d m" % d
-                return data['name'];
-        return None
+            if(d <= threshold_m and d < last_d):
+                name = data['name']
+            last_d = d
 
+        return name
+
+    def get_location_coordinates(self, name):
+        for data in self.location_db:
+            if data['name'] == name:
+                return (data['lat'], data['long'])
+
+        return None
 
     def update_location_db(self):
         with open(constants.location_db, 'w') as f:
