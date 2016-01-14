@@ -1,0 +1,6 @@
+LatLon
+docopt
+requests
+mock
+send2trash
+sphinx

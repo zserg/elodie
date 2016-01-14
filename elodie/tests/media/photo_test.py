@@ -116,6 +116,28 @@ def test_is_not_valid():
 
     assert not photo.is_valid()
 
+def test_set_date_taken_with_missing_datetimeoriginal():
+    # When datetimeoriginal (or other key) is missing we have to add it gh-74
+    # https://github.com/jmathai/elodie/issues/74
+    temporary_folder, folder = helper.create_working_folder()
+
+    origin = '%s/photo.jpg' % folder
+    shutil.copyfile(helper.get_file('no-exif.jpg'), origin)
+
+    photo = Photo(origin)
+    status = photo.set_date_taken(datetime.datetime(2013, 9, 30, 7, 6, 5))
+
+    assert status == True, status
+
+    photo_new = Photo(origin)
+    metadata = photo_new.get_metadata()
+
+    date_taken = metadata['date_taken']
+
+    shutil.rmtree(folder)
+
+    assert date_taken == (2013, 9, 30, 7, 6, 5, 0, 273, 0), metadata['date_taken']
+
 def test_set_date_taken():
     temporary_folder, folder = helper.create_working_folder()
 
@@ -184,7 +206,6 @@ def test_set_title():
     assert metadata['title'] == 'my photo title', metadata['title']
 
 def test_set_title_non_ascii():
-    raise SkipTest('gh-27, non-ascii characters')
     temporary_folder, folder = helper.create_working_folder()
 
     origin = '%s/photo.jpg' % folder
@@ -193,8 +214,10 @@ def test_set_title_non_ascii():
     photo = Photo(origin)
     origin_metadata = photo.get_metadata()
 
-    status = photo.set_title('形声字 / 形聲字')
+    unicode_title = u'形声字 / 形聲字'
+    utf8_title = unicode_title.encode('utf-8')
 
+    status = photo.set_title(unicode_title)
     assert status == True, status
 
     photo_new = Photo(origin)
@@ -202,4 +225,4 @@ def test_set_title_non_ascii():
 
     shutil.rmtree(folder)
 
-    assert metadata['title'] == '形声字 / 形聲字', metadata['title']
+    assert metadata['title'] == utf8_title, metadata['title']
