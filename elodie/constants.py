@@ -5,7 +5,7 @@ Settings used by Elodie.
 from os import path
 
 #: If True, debug messages will be printed.
-debug = False
+debug = True
 
 #: Directory in which to store Elodie settings.
 application_directory = '{}/.elodie'.format(path.expanduser('~'))

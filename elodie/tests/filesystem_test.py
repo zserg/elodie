@@ -164,28 +164,28 @@ def test_get_folder_name_by_date():
 def test_get_folder_path_plain():
     filesystem = FileSystem()
     media = Photo(helper.get_file('plain.jpg'))
-    path = filesystem.get_folder_path(media.get_metadata())
+    path,_ = filesystem.get_folder_path(media.get_metadata())
 
     assert path == os.path.join('2015-12-Dec','Unknown Location'), path
 
 def test_get_folder_path_with_title():
     filesystem = FileSystem()
     media = Photo(helper.get_file('with-title.jpg'))
-    path = filesystem.get_folder_path(media.get_metadata())
+    path,_ = filesystem.get_folder_path(media.get_metadata())
 
     assert path == os.path.join('2015-12-Dec','Unknown Location'), path
 
 def test_get_folder_path_with_location():
     filesystem = FileSystem()
     media = Photo(helper.get_file('with-location.jpg'))
-    path = filesystem.get_folder_path(media.get_metadata())
+    path,_ = filesystem.get_folder_path(media.get_metadata())
 
     assert path == os.path.join('2015-12-Dec','Sunnyvale'), path
 
 def test_get_folder_path_with_location_and_title():
     filesystem = FileSystem()
     media = Photo(helper.get_file('with-location-and-title.jpg'))
-    path = filesystem.get_folder_path(media.get_metadata())
+    path,_ = filesystem.get_folder_path(media.get_metadata())
 
     assert path == os.path.join('2015-12-Dec','Sunnyvale'), path
 
@@ -209,7 +209,7 @@ def test_process_file_plain():
     shutil.copyfile(helper.get_file('plain.jpg'), origin)
 
     media = Photo(origin)
-    destination = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
+    destination,_ = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
 
     origin_checksum = helper.checksum(origin)
     destination_checksum = helper.checksum(destination)
@@ -229,7 +229,7 @@ def test_process_file_with_title():
     shutil.copyfile(helper.get_file('with-title.jpg'), origin)
 
     media = Photo(origin)
-    destination = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
+    destination,_ = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
 
     origin_checksum = helper.checksum(origin)
     destination_checksum = helper.checksum(destination)
@@ -249,7 +249,7 @@ def test_process_file_with_location():
     shutil.copyfile(helper.get_file('with-location.jpg'), origin)
 
     media = Photo(origin)
-    destination = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
+    destination,_ = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
 
     origin_checksum = helper.checksum(origin)
     destination_checksum = helper.checksum(destination)
@@ -269,7 +269,7 @@ def test_process_file_with_location_and_title():
     shutil.copyfile(helper.get_file('with-location-and-title.jpg'), origin)
 
     media = Photo(origin)
-    destination = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
+    destination,_ = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
 
     origin_checksum = helper.checksum(origin)
     destination_checksum = helper.checksum(destination)
@@ -289,7 +289,7 @@ def test_process_file_with_album():
     shutil.copyfile(helper.get_file('with-album.jpg'), origin)
 
     media = Photo(origin)
-    destination = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
+    destination,_ = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
 
     origin_checksum = helper.checksum(origin)
     destination_checksum = helper.checksum(destination)
@@ -309,7 +309,7 @@ def test_process_file_with_album_and_title():
     shutil.copyfile(helper.get_file('with-album-and-title.jpg'), origin)
 
     media = Photo(origin)
-    destination = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
+    destination,_ = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
 
     origin_checksum = helper.checksum(origin)
     destination_checksum = helper.checksum(destination)
@@ -329,7 +329,7 @@ def test_process_file_with_album_and_title_and_location():
     shutil.copyfile(helper.get_file('with-album-and-title-and-location.jpg'), origin)
 
     media = Photo(origin)
-    destination = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
+    destination,_ = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
 
     origin_checksum = helper.checksum(origin)
     destination_checksum = helper.checksum(destination)
@@ -354,7 +354,7 @@ def test_process_video_with_album_then_title():
     media = Video(origin)
     media.set_album('test_album')
     media.set_title('test_title')
-    destination = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
+    destination,_ = filesystem.process_file(origin, temporary_folder, media, allowDuplicate=True)
 
     destination_checksum = helper.checksum(destination)
 
@@ -364,3 +364,48 @@ def test_process_video_with_album_then_title():
     assert origin_checksum is not None, origin_checksum
     assert origin_checksum != destination_checksum, destination_checksum
     assert helper.path_tz_fix(os.path.join('2015-01-Jan','test_album','2015-01-19_12-45-11-movie-test_title.mov')) in destination, destination
+
+def test_process_file_with_location_mode_get_path():
+    filesystem = FileSystem()
+    temporary_folder, folder = helper.create_working_folder()
+    origin = os.path.join(folder,'photo.jpg')
+    shutil.copyfile(helper.get_file('with-location.jpg'), origin)
+
+    media = Photo(origin)
+    destination, path = filesystem.process_file(origin, temporary_folder, media,
+                             allowDuplicate=True, mode='get_path')
+
+    origin_checksum = helper.checksum(origin)
+
+    assert os.path.isfile(destination) == False, (destination,os.path.isfile(destination))
+
+    shutil.rmtree(folder)
+
+    assert origin_checksum is not None, origin_checksum
+    assert helper.path_tz_fix(os.path.join('2015-12-Dec','Sunnyvale','2015-12-05_00-59-26-photo.jpg')) in destination, destination
+    assert len(path) == 2, len(path)
+    assert len(path[0]) == 3, len(path[0])
+
+def test_process_file_with_location_mode_place_file():
+    filesystem = FileSystem()
+    temporary_folder, folder = helper.create_working_folder()
+
+    origin = os.path.join(folder,'photo.jpg')
+    shutil.copyfile(helper.get_file('with-location.jpg'), origin)
+
+    media = Photo(origin)
+    destination, path = filesystem.process_file(origin, temporary_folder, media,
+                             allowDuplicate=True, mode='get_path')
+
+    path[0][1] = 'Nice place' # replace location
+    destination, path = filesystem.process_file(origin, temporary_folder, media,
+                             allowDuplicate=True, mode='place_file', file_path=path[0])
+
+    destination_checksum = helper.checksum(destination)
+    origin_checksum = helper.checksum(origin)
+
+    shutil.rmtree(folder)
+
+    assert origin_checksum is not None, origin_checksum
+    assert origin_checksum == destination_checksum, destination_checksum
+    assert helper.path_tz_fix(os.path.join('2015-12-Dec','Nice place','2015-12-05_00-59-26-photo.jpg')) in destination, destination

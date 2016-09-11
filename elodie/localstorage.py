@@ -118,7 +118,7 @@ class Db(object):
     # - Cache a small number of lookups, photos are likely to be taken in
     #   clusters around a spot during import.
 
-    def add_location(self, latitude, longitude, place, write=False):
+    def add_location(self, latitude, longitude, place, write=False, alias=None):
         """Add a location to the database.
 
         :param float latitude: Latitude of the location.
@@ -130,6 +130,8 @@ class Db(object):
         data['lat'] = latitude
         data['long'] = longitude
         data['name'] = place
+        data['aliases'] = [alias]
+
         self.location_db.append(data)
         if(write is True):
             self.update_location_db()
@@ -145,6 +147,7 @@ class Db(object):
         """
         last_d = sys.maxsize
         name = None
+        aliases = None
         for data in self.location_db:
             # As threshold is quite small use simple math
             # From http://stackoverflow.com/questions/15736995/how-can-i-quickly-estimate-the-distance-between-two-latitude-longitude-points  # noqa
@@ -162,9 +165,11 @@ class Db(object):
             # Use if closer then threshold_km reuse lookup
             if(d <= threshold_m and d < last_d):
                 name = data['name']
+                if 'aliases' in data:
+                    aliases = data['aliases']
             last_d = d
 
-        return name
+        return name, aliases
 
     def get_location_coordinates(self, name):
         """Get the latitude and longitude for a location.

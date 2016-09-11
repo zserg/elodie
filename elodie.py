@@ -31,9 +31,12 @@ DB = Db()
 FILESYSTEM = FileSystem()
 
 
-def import_file(_file, destination, album_from_folder, trash, allow_duplicates):
+def import_file(_file, destination, album_from_folder, trash, allow_duplicates,
+                get_place_only=False):
     """Set file metadata and move it to destination.
     """
+    print('import file %s'%get_place_only)
+
     if not os.path.exists(_file):
         if constants.debug:
             print('Could not find %s' % _file)
@@ -54,15 +57,18 @@ def import_file(_file, destination, album_from_folder, trash, allow_duplicates):
     if album_from_folder:
         media.set_album_from_folder()
 
-    dest_path = FILESYSTEM.process_file(_file, destination,
+    dest_path, aliases = FILESYSTEM.process_file(_file, destination,
         media, allowDuplicate=allow_duplicates, move=False)
-    if dest_path:
-        print('%s -> %s' % (_file, dest_path))
-    if trash:
-        send2trash(_file)
+    if not get_place_only:
+        if dest_path:
+            print('%s -> %s' % (_file, dest_path))
+        if trash:
+            send2trash(_file)
 
     return dest_path or None
 
+def confirm_place():
+    pass
 
 @click.command('import')
 @click.option('--destination', type=click.Path(file_okay=False),
@@ -99,7 +105,6 @@ def _import(destination, source, file, album_from_folder, trash, paths, allow_du
     for current_file in files:
         import_file(current_file, destination, album_from_folder,
                     trash, allow_duplicates)
-
 
 def update_location(media, file_path, location_name):
     """Update location exif metadata of media.

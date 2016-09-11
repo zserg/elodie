@@ -145,6 +145,7 @@ class FileSystem(object):
         :returns: str
         """
         path = []
+        aliases = []
         if(metadata['date_taken'] is not None):
             path.append(time.strftime('%Y-%m-%b', metadata['date_taken']))
 
@@ -154,7 +155,7 @@ class FileSystem(object):
             metadata['latitude'] is not None and
             metadata['longitude'] is not None
         ):
-            place_name = geolocation.place_name(
+            place_name, aliases = geolocation.place_name(
                 metadata['latitude'],
                 metadata['longitude']
             )
@@ -166,46 +167,69 @@ class FileSystem(object):
             path.append('Unknown Location')
 
         # return '/'.join(path[::-1])
-        return os.path.join(*path)
+        return os.path.join(*path), (path, aliases)
 
-    def process_file(self, _file, destination, media, **kwargs):
-        move = False
-        if('move' in kwargs):
-            move = kwargs['move']
-
-        allow_duplicate = False
-        if('allowDuplicate' in kwargs):
-            allow_duplicate = kwargs['allowDuplicate']
+    def process_file(self, _file, destination, media,
+                     move = False, allowDuplicate=False,
+                     mode = 'normal', file_path=[]):
+        """
+        param: _file str : source file path
+        param: destination str : destination directory (normal mode)
+                                 destination file path (place_file mode)
+        param: media Media :
+        param: mode str : one of 'normal', 'get_path' or 'place_file'
+                          'normal' - normal file process
+                          'get_path' - only get dectination path without copying
+                          'place_file'- copy file to the destination
+        param: file_path [str] : file path for place_file mode
+                                [date, location, file_name]
+        param: move Boolean
+        returns: destination_path(str), path(tuple)
+                 'path' is ([date, location, file_name], [aliases])
+        """
 
         if(not media.is_valid()):
             print('%s is not a valid media file. Skipping...' % _file)
             return
 
-        metadata = media.get_metadata()
+        if mode in ('normal','get_path'):
+            metadata = media.get_metadata()
+            directory_name, path = self.get_folder_path(metadata)
 
-        directory_name = self.get_folder_path(metadata)
+            dest_directory = os.path.join(destination, directory_name)
+            file_name = self.get_file_name(media)
+            path[0].append(file_name)
 
-        dest_directory = os.path.join(destination, directory_name)
-        file_name = self.get_file_name(media)
-        dest_path = os.path.join(dest_directory, file_name)
+            db = Db()
+            checksum = db.checksum(_file)
+            if(checksum is None):
+                if(constants.debug is True):
+                    print('Could not get checksum for %s. Skipping...' % _file)
+                return
 
-        db = Db()
-        checksum = db.checksum(_file)
-        if(checksum is None):
-            if(constants.debug is True):
-                print('Could not get checksum for %s. Skipping...' % _file)
-            return
+            # If duplicates are not allowed and this hash exists in the db then we
+            #   return
+            if(allowDuplicate is False and db.check_hash(checksum) is True):
+                if(constants.debug is True):
+                    print('%s already exists at %s. Skipping...' % (
+                        _file,
+                        db.get_hash(checksum)
+                    ))
+                return
 
-        # If duplicates are not allowed and this hash exists in the db then we
-        #   return
-        if(allow_duplicate is False and db.check_hash(checksum) is True):
-            if(constants.debug is True):
-                print('%s already exists at %s. Skipping...' % (
-                    _file,
-                    db.get_hash(checksum)
-                ))
-            return
+        if mode in ('normal','get_path'):
+            dest_path = os.path.join(dest_directory, file_name)
+        else:
+            dest_path = os.path.join(destination,*file_path)
+            dest_directory = os.path.join(destination, file_path[0],file_path[1])
+            path = []
 
+        if mode in ('normal','place_file'):
+            self.copy_file(dest_directory, dest_path, _file, move)
+
+        return dest_path, path
+
+    def copy_file(self, dest_directory, dest_path, _file, move):
         self.create_directory(dest_directory)
 
         if(move is True):
@@ -215,10 +239,12 @@ class FileSystem(object):
         else:
             shutil.copy2(_file, dest_path)
 
+        db = Db()
+        checksum = db.checksum(_file)
         db.add_hash(checksum, dest_path)
         db.update_hash_db()
-
         return dest_path
+
 
     def set_date_from_path_video(self, video):
         """Set the modification time on the file based on the file path.

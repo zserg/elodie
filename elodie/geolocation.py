@@ -116,6 +116,7 @@ def get_key():
 
 def place_name(lat, lon):
     # Convert lat/lon to floats
+    print('place_name')
     if not isinstance(lat, float):
         lat = float(lat)
     if not isinstance(lon, float):
@@ -124,15 +125,19 @@ def place_name(lat, lon):
     # Try to get cached location first
     db = Db()
     # 3km distace radious for a match
-    cached_place_name = db.get_location_name(lat, lon, 3000)
+    cached_place_name, aliases  = db.get_location_name(lat, lon, 3000)
+    print('cached %s'%cached_place_name)
     if(cached_place_name is not None):
-        return cached_place_name
+        print('cached %s'%cached_place_name)
+        return cached_place_name, aliases
 
+    print('place_name cp0')
     lookup_place_name = None
     geolocation_info = reverse_lookup(lat, lon)
     if(geolocation_info is not None):
         if('address' in geolocation_info):
             address = geolocation_info['address']
+            print('address=%s'%address)
             if('city' in address):
                 lookup_place_name = address['city']
             elif('state' in address):
@@ -144,10 +149,11 @@ def place_name(lat, lon):
         db.add_location(lat, lon, lookup_place_name)
         # TODO: Maybe this should only be done on exit and not for every write.
         db.update_location_db()
-    return lookup_place_name
+    return lookup_place_name, None
 
 
 def reverse_lookup(lat, lon):
+    print('reverse_lookup')
     if(lat is None or lon is None):
         return None
 
