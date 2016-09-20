@@ -42,7 +42,7 @@ def download_file(name, destination):
         return final_name
     except Exception as e:
         return False
-    
+
 def get_file(name):
     file_path = get_file_path(name)
     if not os.path.isfile(file_path):
