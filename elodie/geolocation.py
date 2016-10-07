@@ -149,7 +149,8 @@ def place_name(lat, lon):
         db.add_location(lat, lon, lookup_place_name)
         # TODO: Maybe this should only be done on exit and not for every write.
         db.update_location_db()
-    return lookup_place_name, None
+    return lookup_place_name,[]
+
 
 
 def reverse_lookup(lat, lon):

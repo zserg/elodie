@@ -185,7 +185,7 @@ class FileSystem(object):
                                 [date, location, file_name]
         param: move Boolean
         returns: destination_path(str), path(tuple)
-                 'path' is ([date, location, file_name], [aliases])
+                 'path' is ([destination, date, location, file_name], [aliases])
         """
 
         if(not media.is_valid()):
@@ -195,6 +195,7 @@ class FileSystem(object):
         if mode in ('normal','get_path'):
             metadata = media.get_metadata()
             directory_name, path = self.get_folder_path(metadata)
+            path[0].insert(0,destination)
 
             dest_directory = os.path.join(destination, directory_name)
             file_name = self.get_file_name(media)
@@ -221,7 +222,7 @@ class FileSystem(object):
             dest_path = os.path.join(dest_directory, file_name)
         else:
             dest_path = os.path.join(destination,*file_path)
-            dest_directory = os.path.join(destination, file_path[0],file_path[1])
+            dest_directory = os.path.join(destination, file_path[1],file_path[2])
             path = []
 
         if mode in ('normal','place_file'):

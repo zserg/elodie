@@ -346,5 +346,9 @@ def restore_hash_db():
 #     shutil.rmtree(folder_destination)
 #     assert helper.path_tz_fix(os.path.join('2015-12-Dec','Sunnyvale','2015-12-05_00-59-26-with-location.jpg')) in dest_path, dest_path
 
+def test_confirm_place():
+    file_path = (['/tmp','2015','Moscow','file.jpg'], ['Nice place', 'Home'])
 
+    elodie.confirm_place(file_path)
+    assert 1 == 2
 

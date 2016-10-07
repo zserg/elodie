@@ -67,8 +67,21 @@ def import_file(_file, destination, album_from_folder, trash, allow_duplicates,
 
     return dest_path or None
 
-def confirm_place():
-    pass
+def confirm_place(file_path):
+    """
+    param: ([dest,date,location,name], [aliases])
+    returns: ([dest,date,location,name], [])
+    """
+    dest_path = os.path.join(*file_path[0])
+    print('Photo destinanation path is:')
+    print('"%s"'%dest_path)
+    print('Is it OK?')
+    print("  1 - It's OK")
+    print("  2 - Set Unknown Location")
+    print("  3 - Change location")
+    a = raw_input('?')
+    print(a)
+
 
 @click.command('import')
 @click.option('--destination', type=click.Path(file_okay=False),

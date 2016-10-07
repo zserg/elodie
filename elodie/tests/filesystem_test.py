@@ -384,7 +384,7 @@ def test_process_file_with_location_mode_get_path():
     assert origin_checksum is not None, origin_checksum
     assert helper.path_tz_fix(os.path.join('2015-12-Dec','Sunnyvale','2015-12-05_00-59-26-photo.jpg')) in destination, destination
     assert len(path) == 2, len(path)
-    assert len(path[0]) == 3, len(path[0])
+    assert len(path[0]) == 4, len(path[0])
 
 def test_process_file_with_location_mode_place_file():
     filesystem = FileSystem()
@@ -397,7 +397,11 @@ def test_process_file_with_location_mode_place_file():
     destination, path = filesystem.process_file(origin, temporary_folder, media,
                              allowDuplicate=True, mode='get_path')
 
-    path[0][1] = 'Nice place' # replace location
+    print(path)
+    assert len(path[1]) == 0, len(path[1]) # aliases is empty
+
+    path[0][2] = 'Nice place' # replace location
+    path[1].append('Nice place') # add alias
     destination, path = filesystem.process_file(origin, temporary_folder, media,
                              allowDuplicate=True, mode='place_file', file_path=path[0])
 
