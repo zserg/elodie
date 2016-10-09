@@ -32,10 +32,15 @@ FILESYSTEM = FileSystem()
 
 
 def import_file(_file, destination, album_from_folder, trash, allow_duplicates,
-                get_place_only=False):
+                from_gui=False, mode='normal', file_path = []):
     """Set file metadata and move it to destination.
+        param: mode str : one of 'normal', 'get_path' or 'place_file'
+                          'normal' - normal file process
+                          'get_path' - only get destination path without copying
+                          'place_file'- copy file to the destination
+        param: file_path [str] : file path for place_file mode
+                                [date, location, file_name]
     """
-    print('import file %s'%get_place_only)
 
     if not os.path.exists(_file):
         if constants.debug:
@@ -57,30 +62,67 @@ def import_file(_file, destination, album_from_folder, trash, allow_duplicates,
     if album_from_folder:
         media.set_album_from_folder()
 
-    dest_path, aliases = FILESYSTEM.process_file(_file, destination,
-        media, allowDuplicate=allow_duplicates, move=False)
-    if not get_place_only:
+    dest_path = FILESYSTEM.process_file(_file, destination,
+        media, allowDuplicate=allow_duplicates, move=False,
+        mode=mode, file_path=file_path)
+
+    if mode == 'get_path':
+        if from_gui:
+            print('path=%s'%dest_path[1])
+        return dest_path
+    else:
         if dest_path:
-            print('%s -> %s' % (_file, dest_path))
+            print('%s -> %s' % (_file, dest_path[0]))
         if trash:
             send2trash(_file)
 
-    return dest_path or None
+        return dest_path[0] if dest_path else None
 
 def confirm_place(file_path):
     """
     param: ([dest,date,location,name], [aliases])
-    returns: ([dest,date,location,name], [])
+    returns: ([dest,date,location,name], [aliases])
     """
     dest_path = os.path.join(*file_path[0])
-    print('Photo destinanation path is:')
-    print('"%s"'%dest_path)
-    print('Is it OK?')
-    print("  1 - It's OK")
-    print("  2 - Set Unknown Location")
-    print("  3 - Change location")
-    a = raw_input('?')
-    print(a)
+    aliases = file_path[1]
+
+    while True:
+        print('Photo destinanation path is:')
+        print('"%s"'%dest_path)
+        print('Is it OK?')
+        print("  1 - It's OK (default)")
+        print("  2 - Set Unknown Location")
+        print("  3 - Change location")
+        a = raw_input('? (Enter for default)')
+        if a in ('', '1', '2', '3'):
+            break
+
+    if a == '' or a == '1':
+        print('Destination: %s'%dest_path)
+    else:
+        if a == '2':
+            location = 'Unknown Location'
+        else:
+            print('Existing aliases for this location:')
+            for e in aliases:
+                if e == aliases[0]:
+                    print('"%s" (default)'%e)
+                else:
+                    print('"%s"'%e)
+            a = raw_input('? (Enter for default)')
+            if a == '':
+                location = aliases[0]
+            else:
+                location = a
+                if a in aliases:
+                    i = aliases.index(a)
+                    aliases[0],aliases[i] = a,aliases[0]
+                else:
+                    aliases = [a]+aliases
+
+        file_path[0][2] = location
+        dest_path = os.path.join(*file_path[0])
+        print('Destination: %s, aliases: %s'%(dest_path, aliases))
 
 
 @click.command('import')
@@ -96,8 +138,11 @@ def confirm_place(file_path):
               help='After copying files, move the old files to the trash.')
 @click.option('--allow-duplicates', default=False, is_flag=True,
               help='Import the file even if it\'s already been imported.')
+@click.option('--confirm-location', default=False, is_flag=True,
+              help='Confirm or change location name.')
 @click.argument('paths', nargs=-1, type=click.Path())
-def _import(destination, source, file, album_from_folder, trash, paths, allow_duplicates):
+def _import(destination, source, file, album_from_folder, trash, paths, allow_duplicates,
+            confirm_location):
     """Import files or directories by reading their EXIF and organizing them accordingly.
     """
     destination = os.path.expanduser(destination)
@@ -116,8 +161,17 @@ def _import(destination, source, file, album_from_folder, trash, paths, allow_du
             files.add(path)
 
     for current_file in files:
-        import_file(current_file, destination, album_from_folder,
-                    trash, allow_duplicates)
+        if confirm_location:
+            import_file(current_file, destination, album_from_folder,
+                        trash, allow_duplicates, mode='get_path')
+            confirm_place()
+            import_file(current_file, destination, album_from_folder,
+                        trash, allow_duplicates, mode='place_file')
+        else:
+            import_file(current_file, destination, album_from_folder,
+                        trash, allow_duplicates, mode='normal')
+
+
 
 def update_location(media, file_path, location_name):
     """Update location exif metadata of media.

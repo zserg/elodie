@@ -144,13 +144,13 @@ class FileSystem(object):
         :param time time_obj: Time object to be used to determine folder name.
         :returns: str
         """
-        path = []
+        path = {}
         aliases = []
         if(metadata['date_taken'] is not None):
-            path.append(time.strftime('%Y-%m-%b', metadata['date_taken']))
+            path['date'] = time.strftime('%Y-%m-%b', metadata['date_taken'])
 
         if(metadata['album'] is not None):
-            path.append(metadata['album'])
+            path['location'] = metadata['album']
         elif(
             metadata['latitude'] is not None and
             metadata['longitude'] is not None
@@ -160,14 +160,15 @@ class FileSystem(object):
                 metadata['longitude']
             )
             if(place_name is not None):
-                path.append(place_name)
+                path['location'] = place_name
+                path['aliases'] = aliases
 
         # if we don't have a 2nd level directory we use 'Unknown Location'
         if(len(path) < 2):
-            path.append('Unknown Location')
+            path['location'] = 'Unknown Location'
 
         # return '/'.join(path[::-1])
-        return os.path.join(*path), (path, aliases)
+        return os.path.join(path['date'],path['location']), path
 
     def process_file(self, _file, destination, media,
                      move = False, allowDuplicate=False,
@@ -179,7 +180,7 @@ class FileSystem(object):
         param: media Media :
         param: mode str : one of 'normal', 'get_path' or 'place_file'
                           'normal' - normal file process
-                          'get_path' - only get dectination path without copying
+                          'get_path' - only get destination path without copying
                           'place_file'- copy file to the destination
         param: file_path [str] : file path for place_file mode
                                 [date, location, file_name]
@@ -195,11 +196,11 @@ class FileSystem(object):
         if mode in ('normal','get_path'):
             metadata = media.get_metadata()
             directory_name, path = self.get_folder_path(metadata)
-            path[0].insert(0,destination)
+            path['destination'] = destination
 
             dest_directory = os.path.join(destination, directory_name)
             file_name = self.get_file_name(media)
-            path[0].append(file_name)
+            path['file_name'] = file_name
 
             db = Db()
             checksum = db.checksum(_file)
@@ -218,12 +219,16 @@ class FileSystem(object):
                     ))
                 return
 
+        print('process_file')
+        print(path)
+
         if mode in ('normal','get_path'):
             dest_path = os.path.join(dest_directory, file_name)
+            print('++%s'%dest_path)
         else:
             dest_path = os.path.join(destination,*file_path)
             dest_directory = os.path.join(destination, file_path[1],file_path[2])
-            path = []
+            path = {}
 
         if mode in ('normal','place_file'):
             self.copy_file(dest_directory, dest_path, _file, move)

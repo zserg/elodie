@@ -329,26 +329,35 @@ def restore_hash_db():
     if os.path.isfile(hash_db):
         os.rename(hash_db, hash_db.replace('-test', ''))
 
-# def test_import_file_get_place_only_photo():
-#     temporary_folder, folder = helper.create_working_folder()
-#     temporary_folder_destination, folder_destination = helper.create_working_folder()
+def test_import_file_get_place_only_photo():
+    temporary_folder, folder = helper.create_working_folder()
+    temporary_folder_destination, folder_destination = helper.create_working_folder()
 
-#     origin = '%s/with-location.jpg' % folder
-#     shutil.copyfile(helper.get_file('with-location.jpg'), origin)
+    origin = '%s/with-location.jpg' % folder
+    shutil.copyfile(helper.get_file('with-location.jpg'), origin)
 
-#     reset_hash_db()
-#     dest_path = elodie.import_file(origin, folder_destination, False, False, get_place_only=True)
-#     restore_hash_db()
-#     print(dest_path)
-#     assert os.path.isfile(dest_path) == False, (dest_path,os.path.isfile(dest_path))
+    reset_hash_db()
+    dest_path = elodie.import_file(origin, folder_destination, False, False, False, mode='get_path')
+    parts = dest_path[1]
+    print(parts.keys())
+    print(dest_path)
 
-#     shutil.rmtree(folder)
-#     shutil.rmtree(folder_destination)
-#     assert helper.path_tz_fix(os.path.join('2015-12-Dec','Sunnyvale','2015-12-05_00-59-26-with-location.jpg')) in dest_path, dest_path
+    restore_hash_db()
+    assert os.path.isfile(dest_path[0]) == False, (dest_path,os.path.isfile(dest_path[0]))
 
-def test_confirm_place():
-    file_path = (['/tmp','2015','Moscow','file.jpg'], ['Nice place', 'Home'])
+    shutil.rmtree(folder)
+    shutil.rmtree(folder_destination)
+    assert helper.path_tz_fix(os.path.join('2015-12-Dec','Sunnyvale','2015-12-05_00-59-26-with-location.jpg')) in dest_path[0], dest_path[0]
+    assert len(parts) == 5, len(parts)
+    assert parts['destination'] == folder_destination,parts['destination']
+    assert parts['date'] == '2015-12-Dec',parts['date']
+    assert parts['location'] == 'Sunnyvale',parts['location']
+    assert parts['file_name'] == '2015-12-05_00-59-26-with-location.jpg',parts['file_name']
 
-    elodie.confirm_place(file_path)
-    assert 1 == 2
+
+# def test_confirm_place():
+#     file_path = (['/tmp','2015','Moscow','file.jpg'], ['Nice place', 'Home'])
+
+#     elodie.confirm_place(file_path)
+#     assert 1 == 2
 
