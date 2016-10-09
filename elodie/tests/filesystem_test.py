@@ -21,6 +21,15 @@ from nose.plugins.skip import SkipTest
 
 os.environ['TZ'] = 'GMT'
 
+def setup(self):
+    self.patcher = mock.patch('elodie.geolocation.requests.get')
+    self.mock_get = self.patcher.start()
+    mock_response = mock.Mock()
+    mock_response.json.return_value = {'address':{'city':'Sunnyvale'}}
+    self.mock_get.return_value = mock_response
+
+def teardown(self):
+    self.patcher.stop()
 
 def test_create_directory_success():
     filesystem = FileSystem()
