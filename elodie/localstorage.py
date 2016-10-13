@@ -1,4 +1,5 @@
 """
+        irint(self.
 Methods for interacting with information Elodie caches about stored media.
 """
 from builtins import map
@@ -118,7 +119,8 @@ class Db(object):
     # - Cache a small number of lookups, photos are likely to be taken in
     #   clusters around a spot during import.
 
-    def add_location(self, latitude, longitude, place, write=False, alias=None):
+    def add_location(self, latitude, longitude, place, write=False,
+                     alias=None):
         """Add a location to the database.
 
         :param float latitude: Latitude of the location.
@@ -181,7 +183,17 @@ class Db(object):
             if data['name'] == name:
                 return (data['lat'], data['long'])
 
-        return None
+    def set_location_aliases(self, name, aliases):
+        """Set aliases for location
+        :param str name: Name of the location.
+        :param [str] aliases: Aliases of the location.
+        :returns: True, or False if the location wasn't in the database.
+        """
+        for data in self.location_db:
+            if data['name'] == name:
+                data['aliases'] = aliases
+                return True
+        return False
 
     def update_location_db(self):
         """Write the location db to disk."""

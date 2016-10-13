@@ -410,9 +410,8 @@ def test_process_file_with_location_mode_place_file():
                              allowDuplicate=True, mode='get_path')
 
     print(path)
-    assert len(path['aliases']) == 0, len(path['aliases']) # aliases is empty
 
-    path['location'] = 'Nice place' # replace location
+    path['new_location'] = 'Nice place' # replace location
     path['aliases'].append('Nice place') # add alias
     destination, path = filesystem.process_file(origin, temporary_folder, media,
                              allowDuplicate=True, mode='place_file', file_path=path)

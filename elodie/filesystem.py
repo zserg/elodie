@@ -168,11 +168,11 @@ class FileSystem(object):
             path['location'] = 'Unknown Location'
 
         # return '/'.join(path[::-1])
-        return os.path.join(path['date'],path['location']), path
+        return os.path.join(path['date'], path['location']), path
 
     def process_file(self, _file, destination, media,
-                     move = False, allowDuplicate=False,
-                     mode = 'normal', file_path=[]):
+                     move=False, allowDuplicate=False,
+                     mode='normal', file_path=[]):
         """
         param: _file str : source file path
         param: destination str : destination directory (normal mode)
@@ -180,20 +180,39 @@ class FileSystem(object):
         param: media Media :
         param: mode str : one of 'normal', 'get_path' or 'place_file'
                           'normal' - normal file process
-                          'get_path' - only get destination path without copying
+                          'get_path' - only get destination path
+                                       without copying
                           'place_file'- copy file to the destination
         param: file_path [str] : file path for place_file mode
                                 [date, location, file_name]
         param: move Boolean
         returns: destination_path(str), path(tuple)
-                 'path' is ([destination, date, location, file_name], [aliases])
+                 'path' is {'destination', 'date', 'location', 'new_location',
+                            'file_name', 'aliasee'}
         """
 
         if(not media.is_valid()):
             print('%s is not a valid media file. Skipping...' % _file)
             return
 
-        if mode in ('normal','get_path'):
+        db = Db()
+        checksum = db.checksum(_file)
+        if(checksum is None):
+            if(constants.debug is True):
+                print('Could not get checksum for %s. Skipping...' % _file)
+            return
+
+        # If duplicates are not allowed and this hash exists in the db then we
+        #   return
+        if(allowDuplicate is False and db.check_hash(checksum) is True):
+            if(constants.debug is True):
+                print('%s already exists at %s. Skipping...' % (
+                    _file,
+                    db.get_hash(checksum)
+                ))
+            return
+
+        if mode in ('normal', 'get_path'):
             metadata = media.get_metadata()
             directory_name, path = self.get_folder_path(metadata)
             path['destination'] = destination
@@ -202,35 +221,21 @@ class FileSystem(object):
             file_name = self.get_file_name(media)
             path['file_name'] = file_name
 
-            db = Db()
-            checksum = db.checksum(_file)
-            if(checksum is None):
-                if(constants.debug is True):
-                    print('Could not get checksum for %s. Skipping...' % _file)
-                return
-
-            # If duplicates are not allowed and this hash exists in the db then we
-            #   return
-            if(allowDuplicate is False and db.check_hash(checksum) is True):
-                if(constants.debug is True):
-                    print('%s already exists at %s. Skipping...' % (
-                        _file,
-                        db.get_hash(checksum)
-                    ))
-                return
-
-        print('process_file')
-        print(path)
-
-        if mode in ('normal','get_path'):
+        if mode in ('normal', 'get_path'):
             dest_path = os.path.join(dest_directory, file_name)
-            print('++%s'%dest_path)
         else:
-            dest_path = os.path.join(destination,*file_path)
-            dest_directory = os.path.join(destination, file_path[1],file_path[2])
+            dest_path = os.path.join(destination, file_path['date'],
+                                     file_path['new_location'],
+                                     file_path['file_name'])
+            dest_directory = os.path.join(destination, file_path['date'],
+                                          file_path['new_location'])
             path = {}
 
-        if mode in ('normal','place_file'):
+        if mode in ('normal', 'place_file'):
+            if mode == 'place_file':
+                db.set_location_aliases(file_path['location'],
+                                        file_path['aliases'])
+                db.update_location_db()
             self.copy_file(dest_directory, dest_path, _file, move)
 
         return dest_path, path
@@ -250,7 +255,6 @@ class FileSystem(object):
         db.add_hash(checksum, dest_path)
         db.update_hash_db()
         return dest_path
-
 
     def set_date_from_path_video(self, video):
         """Set the modification time on the file based on the file path.

@@ -78,52 +78,99 @@ def import_file(_file, destination, album_from_folder, trash, allow_duplicates,
 
         return dest_path[0] if dest_path else None
 
-def confirm_place(file_path):
+def confirm_place(file_path, default=None):
     """
-    param: ([dest,date,location,name], [aliases])
-    returns: ([dest,date,location,name], [aliases])
+    param: {'destination':destination,'date':date,'location':location,
+            'file_name':file_name,'aliases':[aliases]}
+    returns: {'destination':destination,'date':date,'location':location,
+            'file_name':file_name,'aliases':[aliases]}
     """
-    dest_path = os.path.join(*file_path[0])
-    aliases = file_path[1]
+    if not default:
+        default = {'num':'1'}
+        default['alias'] = file_path['aliases'][0] if file_path['aliases'] else None
 
+    dest_path = os.path.join(file_path['destination'],
+                             file_path['date'],
+                             file_path['location'],
+                             file_path['file_name'])
+    options = ['','1','2','3']
     while True:
         print('Photo destinanation path is:')
         print('"%s"'%dest_path)
         print('Is it OK?')
-        print("  1 - It's OK (default)")
-        print("  2 - Set Unknown Location")
-        print("  3 - Change location")
+
+        default_str = '(default)' if default['num'] == '1' else ''
+        print("  1 - It's OK {}".format(default_str))
+
+        default_str = '(default)' if default['num'] == '2' else ''
+        print("  2 - Set Unknown Location {}".format(default_str))
+
+        default_str = '(default)' if default['num'] == '3' else ''
+        print("  3 - Enter new location {}".format(default_str))
+
+        if default['alias']:
+            default_str = '(default)' if default['num'] == '4' else ''
+            options.append('4')
+            print("  4 - Change location to '{}' {}".format(default['alias'],default_str))
+
         a = raw_input('? (Enter for default)')
-        if a in ('', '1', '2', '3'):
+        if a in options:
             break
 
-    if a == '' or a == '1':
+    if a == '':
+        a = default['num']
+        location = file_path['location']
+
+    if a == '1':
         print('Destination: %s'%dest_path)
-    else:
-        if a == '2':
-            location = 'Unknown Location'
-        else:
+        default['num'] = '1'
+        location = file_path['location']
+    elif a == '2':
+        location = 'Unknown Location'
+        default['num'] = '2'
+    elif a == '3':
+        if file_path['aliases']:
             print('Existing aliases for this location:')
-            for e in aliases:
-                if e == aliases[0]:
-                    print('"%s" (default)'%e)
+            i = 1
+            for e in file_path['aliases']:
+                if e == file_path['aliases'][0]:
+                    print('%d- %s" (default)'%(i,e))
                 else:
-                    print('"%s"'%e)
-            a = raw_input('? (Enter for default)')
-            if a == '':
-                location = aliases[0]
-            else:
-                location = a
-                if a in aliases:
-                    i = aliases.index(a)
-                    aliases[0],aliases[i] = a,aliases[0]
-                else:
-                    aliases = [a]+aliases
+                    print('%d- %s"'%(i,e))
+                i+=1
 
-        file_path[0][2] = location
-        dest_path = os.path.join(*file_path[0])
-        print('Destination: %s, aliases: %s'%(dest_path, aliases))
+        a = raw_input('? ("Enter" for default or type new location )')
+        if a == '':
+            location = file_path['aliases'][0]
+        elif a in ('1','2','3','4','5'):
+            location = file_path['aliases'][int(a)-1]
+        else:
+            location = a
 
+        default['alias'] = location
+        default['num'] = '4'
+        if location in file_path['aliases']:
+            i = file_path['aliases'].index(location)
+            file_path['aliases'][0],file_path['aliases'][i] = location,file_path['aliases'][0]
+        else:
+            file_path['aliases'] = [location]+file_path['aliases']
+
+    else:
+        location = default['alias']
+        default['num'] = '4'
+        if location in file_path['aliases']:
+            i = file_path['aliases'].index(location)
+            file_path['aliases'][0],file_path['aliases'][i] = location,file_path['aliases'][0]
+        else:
+            file_path['aliases'] = [location]+file_path['aliases']
+
+    file_path['new_location'] = location
+    dest_path = os.path.join(file_path['destination'],
+                             file_path['date'],
+                             file_path['new_location'],
+                             file_path['file_name'])
+    #print('Destination: %s, aliases: %s'%(dest_path, file_path['aliases']))
+    return file_path,default
 
 @click.command('import')
 @click.option('--destination', type=click.Path(file_okay=False),
@@ -160,13 +207,16 @@ def _import(destination, source, file, album_from_folder, trash, paths, allow_du
         else:
             files.add(path)
 
+    defaults = None
     for current_file in files:
         if confirm_location:
-            import_file(current_file, destination, album_from_folder,
-                        trash, allow_duplicates, mode='get_path')
-            confirm_place()
-            import_file(current_file, destination, album_from_folder,
-                        trash, allow_duplicates, mode='place_file')
+            import_out = import_file(current_file, destination, album_from_folder,
+                                      trash, allow_duplicates, mode='get_path')
+            if import_out:
+                file_path_mod,defaults = confirm_place(import_out[1],defaults)
+                import_file(current_file, destination, album_from_folder,
+                            trash, allow_duplicates, mode='place_file',
+                            file_path=file_path_mod)
         else:
             import_file(current_file, destination, album_from_folder,
                         trash, allow_duplicates, mode='normal')
